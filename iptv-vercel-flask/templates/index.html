@@ -2,24 +2,162 @@
 
 {% block content %}
   <section class="hero">
-    <h2>Channels</h2>
-    <p class="lead">Click a channel to open the player. Replace the example URLs with your IPTV HLS streams.</p>
+    <h2>IPTV Player</h2>
+    <p class="lead">Add your M3U playlist URL to load channels.</p>
   </section>
 
+  <!-- M3U URL Input Form -->
+  <section class="m3u-input">
+    <form id="m3u-form">
+      <input 
+        type="url" 
+        id="m3u-url" 
+        placeholder="Paste M3U playlist URL (e.g., http://example.com/playlist.m3u)" 
+        required
+      />
+      <button type="submit">Load Playlist</button>
+      <div id="loading" style="display:none; margin-top: 10px; color: #0ea5a4;">Loading channels...</div>
+      <div id="error" style="display:none; margin-top: 10px; color: #e11d48;"></div>
+    </form>
+  </section>
+
+  <!-- Video Player with Controls -->
+  <section class="player-section">
+    <div class="player-wrapper">
+      <video id="player" class="video-player" controls>
+        <source src="" type="application/x-mpegURL" />
+        Your browser does not support the video tag.
+      </video>
+      <div class="player-info">
+        <p id="current-channel">No channel selected</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Channels List -->
   <section class="channels">
-    {% for s in streams %}
-    <article class="channel-card">
-      <div class="meta">
-        <h3>{{ s.name }}</h3>
-      </div>
-      <div class="actions">
-        <a class="play" href="{{ s.url }}">Open Stream</a>
-      </div>
-    </article>
-    {% endfor %}
+    <h3>Available Channels</h3>
+    <div id="channels-container" class="channels-grid">
+      {% if streams %}
+        {% for s in streams %}
+        <article class="channel-card" data-url="{{ s.url }}">
+          <div class="meta">
+            <h4>{{ s.name }}</h4>
+          </div>
+          <button class="play-btn">Play</button>
+        </article>
+        {% endfor %}
+      {% else %}
+        <p style="grid-column: 1 / -1; color: #6b7280;">Load a M3U playlist to see channels.</p>
+      {% endif %}
+    </div>
   </section>
 
-  <section class="player-note">
-    <p>For a better in-browser player, replace the anchor with an HLS-capable player (hls.js) or provide direct browser-playable streams.</p>
-  </section>
+  <script>
+    const player = document.getElementById('player');
+    const m3uForm = document.getElementById('m3u-form');
+    const m3uInput = document.getElementById('m3u-url');
+    const loadingDiv = document.getElementById('loading');
+    const errorDiv = document.getElementById('error');
+    const channelsContainer = document.getElementById('channels-container');
+    const currentChannelDiv = document.getElementById('current-channel');
+
+    // Initialize HLS.js if available
+    let hls;
+    if (Hls.isSupported()) {
+      hls = new Hls();
+      hls.attachMedia(player);
+    }
+
+    // Parse M3U format and extract channels
+    function parseM3U(m3uText) {
+      const lines = m3uText.split('\n');
+      const channels = [];
+      let currentChannel = null;
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('#EXTINF')) {
+          // Extract channel name from #EXTINF:duration,name
+          const match = trimmed.match(/,(.+)$/);
+          currentChannel = { name: match ? match[1] : 'Unknown' };
+        } else if (trimmed && !trimmed.startsWith('#') && currentChannel) {
+          currentChannel.url = trimmed;
+          channels.push(currentChannel);
+          currentChannel = null;
+        }
+      }
+      return channels;
+    }
+
+    // Load and parse M3U playlist
+    m3uForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const m3uUrl = m3uInput.value.trim();
+      
+      if (!m3uUrl) return;
+
+      loadingDiv.style.display = 'block';
+      errorDiv.style.display = 'none';
+      errorDiv.textContent = '';
+
+      try {
+        // Use CORS proxy if needed
+        const response = await fetch(`https://cors-anywhere.herokuapp.com/${m3uUrl}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch M3U (${response.status})`);
+        }
+        const m3uText = await response.text();
+        const channels = parseM3U(m3uText);
+
+        if (channels.length === 0) {
+          throw new Error('No channels found in M3U file');
+        }
+
+        // Clear and populate channels list
+        channelsContainer.innerHTML = '';
+        channels.forEach((ch) => {
+          const card = document.createElement('article');
+          card.className = 'channel-card';
+          card.dataset.url = ch.url;
+          card.innerHTML = `
+            <div class="meta">
+              <h4>${ch.name}</h4>
+            </div>
+            <button class="play-btn">Play</button>
+          `;
+          card.querySelector('.play-btn').addEventListener('click', () => playChannel(ch.url, ch.name));
+          channelsContainer.appendChild(card);
+        });
+
+        loadingDiv.style.display = 'none';
+      } catch (err) {
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = `Error: ${err.message}`;
+        loadingDiv.style.display = 'none';
+      }
+    });
+
+    // Play a channel
+    function playChannel(url, name) {
+      currentChannelDiv.textContent = `Now playing: ${name}`;
+      if (hls) {
+        hls.loadSource(url);
+        hls.startLoad();
+      } else {
+        player.src = url;
+      }
+      player.play();
+    }
+
+    // Attach click handlers to default channels (if loaded)
+    document.querySelectorAll('.channel-card .play-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const card = e.target.closest('.channel-card');
+        const url = card.dataset.url;
+        const name = card.querySelector('h4').textContent;
+        playChannel(url, name);
+      });
+    });
+  </script>
 {% endblock %}
