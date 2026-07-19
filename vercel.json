@@ -1,7 +1,13 @@
 {
   "version": 2,
   "builds": [
-    { "src": "iptv-vercel-flask/api/index.py", "use": "@vercel/python" }
+    {
+      "src": "iptv-vercel-flask/api/index.py",
+      "use": "@vercel/python",
+      "config": {
+        "installCommand": "pip install -r iptv-vercel-flask/requirements.txt"
+      }
+    }
   ],
   "routes": [
     { "src": "/(.*)", "dest": "iptv-vercel-flask/api/index.py" }
