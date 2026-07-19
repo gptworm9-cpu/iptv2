@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "iptv-vercel-flask/api/index.py", "use": "@vercel/python" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "iptv-vercel-flask/api/index.py" }
+  ]
+}
