@@ -1,0 +1,25 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+  <section class="hero">
+    <h2>Channels</h2>
+    <p class="lead">Click a channel to open the player. Replace the example URLs with your IPTV HLS streams.</p>
+  </section>
+
+  <section class="channels">
+    {% for s in streams %}
+    <article class="channel-card">
+      <div class="meta">
+        <h3>{{ s.name }}</h3>
+      </div>
+      <div class="actions">
+        <a class="play" href="{{ s.url }}">Open Stream</a>
+      </div>
+    </article>
+    {% endfor %}
+  </section>
+
+  <section class="player-note">
+    <p>For a better in-browser player, replace the anchor with an HLS-capable player (hls.js) or provide direct browser-playable streams.</p>
+  </section>
+{% endblock %}
