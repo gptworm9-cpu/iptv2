@@ -14,13 +14,5 @@ def index():
     return render_template('index.html', streams=streams)
 
 
-# Vercel WSGI handler
-try:
-    from vercel_wsgi import handle_request
-
-    def handler(request):
-        return handle_request(app, request)
-except Exception:
-    # Local dev fallback
-    if __name__ == '__main__':
-        app.run(host='127.0.0.1', port=5000, debug=True)
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=5000, debug=True)
